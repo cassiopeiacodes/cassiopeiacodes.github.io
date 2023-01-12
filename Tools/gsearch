@@ -1,0 +1,35 @@
+#!/bin/bash
+
+# ----------------------------------------------- #
+#                  HOW TO USE
+# ----------------------------------------------- #
+#
+# ./gsearch [-s value1,value2] [-p param1,param2] 
+# 
+# OPTION
+# -s search by instances name, internal ip, or external ip
+# -p specific project id
+# ----------------------------------------------- #
+
+project=()
+for arg in $(gcloud projects list --format="value(projectId)"); do
+	project+=($arg)
+done
+
+while getopts 'p:s:' OPTION; do
+	case "$OPTION" in
+		s) search="(${OPTARG//,/)|(})" ;;
+		p) 
+			project=()
+			project="${OPTARG//,/ }" 
+			project=( $project );;
+	esac
+done
+
+for proj in "${project[@]}"; do
+	if [ -z $search ]; then
+		gcloud --format="table[box,title='PROJECT ID --> $proj'](name, networkInterfaces[0].networkIP, networkInterfaces[0].accessConfigs[0].natIP, zone)" compute instances list --project=$proj
+	else
+		gcloud --format="table[box,title='PROJECT ID --> $proj'](name, networkInterfaces[0].networkIP, networkInterfaces[0].accessConfigs[0].natIP, zone)" compute instances list --filter="name~'${search}' OR networkInterfaces[0].networkIP~'${search}' OR networkInterfaces[0].accessConfigs[0].natIP~'${search}'"  --project=$proj
+	fi
+done
